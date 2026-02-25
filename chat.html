@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chats - Bibo's Creation Chatgos</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="main-header">
+  Bibo's Creation Chatgos
+</header>
+
+<div class="chat-list" id="chatList">
+  <!-- Chat IDs will appear here -->
+</div>
+
+<!-- Floating Add Friend Button -->
+<button class="fab" id="addFriendBtn">+</button>
+
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+const supabaseUrl = "https://yxbofwrmutyewqhhxidp.supabase.co";
+const supabaseKey = "sb_publishable_KMKcxhxp5NXQswNPrM1ruA_KwG0j2bD";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+const userId = localStorage.getItem("user_id");
+if (!userId) {
+  window.location.href = "index.html";
+}
+
+const chatList = document.getElementById("chatList");
+
+// For now just show placeholder
+chatList.innerHTML = `
+  <p style="text-align:center;margin-top:30px;color:gray;">
+    No chats yet. Tap + to add friends.
+  </p>
+`;
+
+document.getElementById("addFriendBtn").onclick = () => {
+  alert("Add Friend feature coming next phase");
+};
+</script>
+
+</body>
+</html>
