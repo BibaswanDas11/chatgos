@@ -50,3 +50,20 @@ input {
   color: red;
   font-size: 13px;
 }
+.chat-list {
+  padding: 10px;
+}
+
+.fab {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: royalblue;
+  color: white;
+  border: none;
+  width: 55px;
+  height: 55px;
+  border-radius: 50%;
+  font-size: 28px;
+  cursor: pointer;
+}
