@@ -1,0 +1,52 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: white;
+}
+
+.main-header {
+  background: royalblue;
+  color: white;
+  padding: 15px;
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.auth-container {
+  max-width: 350px;
+  margin: 40px auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+input {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.royal-btn {
+  background: royalblue;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.login-link {
+  text-align: center;
+}
+
+.login-link span {
+  color: royalblue;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.error {
+  color: red;
+  font-size: 13px;
+}
