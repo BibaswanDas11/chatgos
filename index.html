@@ -20,11 +20,15 @@
   <input type="text" id="userid" placeholder="Unique ID (letters & numbers)">
   <span id="idError" class="error"></span>
   <input type="password" id="password" placeholder="Password">
-<button onclick="alert('Button clicked')" class="royal-btn">Create Account</button>
+
+  <button id="signupBtn" class="royal-btn">Create Account</button>
+
   <p class="login-link">Already have an account? <span id="showLogin">Login</span></p>
 
 </div>
 
-<script type="module" src="app.js"></script>
+<!-- IMPORTANT: load script AFTER HTML -->
+<script type="module" src="./app.js"></script>
+
 </body>
 </html>
