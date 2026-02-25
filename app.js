@@ -1,45 +1,54 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
+console.log("App JS Loaded");
+
 const supabaseUrl = "https://yxbofwrmutyewqhhxidp.supabase.co";
 const supabaseKey = "sb_publishable_KMKcxhxp5NXQswNPrM1ruA_KwG0j2bD";
-
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const username = document.getElementById("username");
-const userid = document.getElementById("userid");
-const password = document.getElementById("password");
-const signupBtn = document.getElementById("signupBtn");
-const idError = document.getElementById("idError");
+document.addEventListener("DOMContentLoaded", () => {
+  const username = document.getElementById("username");
+  const userid = document.getElementById("userid");
+  const password = document.getElementById("password");
+  const signupBtn = document.getElementById("signupBtn");
+  const idError = document.getElementById("idError");
 
-// check ID uniqueness
-userid.addEventListener("input", async () => {
-  const { data } = await supabase
-    .from("users")
-    .select("id")
-    .eq("user_id", userid.value);
+  console.log("DOM Ready");
 
-  if (data.length > 0) {
-    idError.textContent = "User ID already exists";
-  } else {
-    idError.textContent = "";
-  }
-});
+  userid.addEventListener("input", async () => {
+    if (!userid.value) return;
 
-signupBtn.addEventListener("click", async () => {
-  if (idError.textContent !== "") return;
+    const { data } = await supabase
+      .from("users")
+      .select("id")
+      .eq("user_id", userid.value);
 
-  const { error } = await supabase.from("users").insert({
-    username: username.value,
-    user_id: userid.value,
-    password: password.value,
-    dp_url: "",
-    status: "online"
+    if (data && data.length > 0) {
+      idError.textContent = "User ID already exists";
+    } else {
+      idError.textContent = "";
+    }
   });
 
-  if (!error) {
+  signupBtn.addEventListener("click", async () => {
+    console.log("Signup clicked");
+
+    if (idError.textContent !== "") return;
+
+    const { error } = await supabase.from("users").insert({
+      username: username.value,
+      user_id: userid.value,
+      password: password.value,
+      dp_url: "",
+      status: "online"
+    });
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
     localStorage.setItem("user_id", userid.value);
     window.location.href = "chat.html";
-  } else {
-    alert(error.message);
-  }
+  });
 });
