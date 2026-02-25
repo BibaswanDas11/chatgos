@@ -27,13 +27,14 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<script>
+<script type="module">
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
 const supabaseUrl = "https://yxbofwrmutyewqhhxidp.supabase.co";
 const supabaseKey = "sb_publishable_KMKcxhxp5NXQswNPrM1ruA_KwG0j2bD";
 
-const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
 const username = document.getElementById("username");
 const userid = document.getElementById("userid");
@@ -57,14 +58,9 @@ userid.addEventListener("input", async () => {
 });
 
 signupBtn.onclick = async () => {
-  alert("Button clicked"); // test 1
+  alert("Button clicked");
 
-  if (idError.textContent !== "") {
-    alert("ID already exists");
-    return;
-  }
-
-  const { data, error } = await supabaseClient.from("users").insert({
+  const { error } = await supabaseClient.from("users").insert({
     username: username.value,
     user_id: userid.value,
     password: password.value,
@@ -73,14 +69,13 @@ signupBtn.onclick = async () => {
   });
 
   if (error) {
-    alert("Supabase error: " + error.message);
+    alert("Error: " + error.message);
     return;
   }
 
-  alert("Account created successfully!");
+  alert("Account created!");
   localStorage.setItem("user_id", userid.value);
   window.location.href = "chat.html";
-};
 };
 </script>
 
