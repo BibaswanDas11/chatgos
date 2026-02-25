@@ -57,9 +57,14 @@ userid.addEventListener("input", async () => {
 });
 
 signupBtn.onclick = async () => {
-  if (idError.textContent !== "") return;
+  alert("Button clicked"); // test 1
 
-  const { error } = await supabaseClient.from("users").insert({
+  if (idError.textContent !== "") {
+    alert("ID already exists");
+    return;
+  }
+
+  const { data, error } = await supabaseClient.from("users").insert({
     username: username.value,
     user_id: userid.value,
     password: password.value,
@@ -68,12 +73,14 @@ signupBtn.onclick = async () => {
   });
 
   if (error) {
-    alert(error.message);
+    alert("Supabase error: " + error.message);
     return;
   }
 
+  alert("Account created successfully!");
   localStorage.setItem("user_id", userid.value);
   window.location.href = "chat.html";
+};
 };
 </script>
 
