@@ -1,29 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chats</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chatgos</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+  <div class="header">Chatgos</div>
 
-<header class="main-header">
-  Bibo's Creation Chatgos
-</header>
+  <div id="chatList" class="chat-list"></div>
 
-<div class="chat-list" id="chatList">
-  <p class="empty">No chats yet. Tap + to add friends.</p>
-</div>
+  <button id="friendsBtn" class="friends-btn">👥</button>
+  <button id="addFriendBtn" class="fab">+</button>
 
-<button class="fab">+</button>
+  <div id="chatWindow" class="chat-window hidden">
+    <div id="chatHeader" class="chat-header"></div>
+    <div id="messages" class="messages"></div>
 
-<script>
-const userId = localStorage.getItem("user_id");
-if (!userId) {
-  window.location.href = "index.html";
-}
-</script>
+    <div class="message-input">
+      <input id="msgInput" type="text" placeholder="Type a message" />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
 
+  <script src="app.js"></script>
 </body>
 </html>
