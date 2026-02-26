@@ -13,71 +13,18 @@
 </header>
 
 <div class="auth-container">
-
   <h2>Create Account</h2>
 
   <input type="text" id="username" placeholder="Username">
-  <input type="text" id="userid" placeholder="Unique ID (letters & numbers)">
+  <input type="text" id="userid" placeholder="Unique ID">
   <span id="idError" class="error"></span>
   <input type="password" id="password" placeholder="Password">
 
-  <button id="signupBtn" class="royal-btn" type="button">
-    Create Account
-  </button>
+  <button id="signupBtn" class="royal-btn">Create Account</button>
 
+  <p class="login-link">Already have an account? <span id="showLogin">Login</span></p>
 </div>
 
-
-<script type="module">
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
-
-const supabaseUrl = "https://yxbofwrmutyewqhhxidp.supabase.co";
-const supabaseKey = "sb_publishable_KMKcxhxp5NXQswNPrM1ruA_KwG0j2bD";
-
-const supabaseClient = createClient(supabaseUrl, supabaseKey);
-
-const username = document.getElementById("username");
-const userid = document.getElementById("userid");
-const password = document.getElementById("password");
-const signupBtn = document.getElementById("signupBtn");
-const idError = document.getElementById("idError");
-
-userid.addEventListener("input", async () => {
-  if (!userid.value) return;
-
-  const { data } = await supabaseClient
-    .from("users")
-    .select("id")
-    .eq("user_id", userid.value);
-
-  if (data && data.length > 0) {
-    idError.textContent = "User ID already exists";
-  } else {
-    idError.textContent = "";
-  }
-});
-
-signupBtn.onclick = async () => {
-  alert("Button clicked");
-
-  const { error } = await supabaseClient.from("users").insert({
-    username: username.value,
-    user_id: userid.value,
-    password: password.value,
-    dp_url: "",
-    status: "online"
-  });
-
-  if (error) {
-    alert("Error: " + error.message);
-    return;
-  }
-
-  alert("Account created!");
-  localStorage.setItem("user_id", userid.value);
-  window.location.href = "chat.html";
-};
-</script>
-
+<script type="module" src="supabase.js"></script>
 </body>
 </html>
