@@ -8,50 +8,45 @@ body {
   background: royalblue;
   color: white;
   padding: 15px;
-  font-size: 20px;
-  font-weight: bold;
   text-align: center;
+  font-weight: bold;
 }
 
 .auth-container {
-  max-width: 350px;
-  margin: 40px auto;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 20px;
 }
 
-input {
+.auth-container input {
+  width: 100%;
   padding: 12px;
+  margin: 8px 0;
   border: 1px solid #ccc;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .royal-btn {
+  width: 100%;
+  padding: 12px;
   background: royalblue;
   color: white;
   border: none;
-  padding: 12px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 16px;
-}
-
-.login-link {
-  text-align: center;
-}
-
-.login-link span {
-  color: royalblue;
-  cursor: pointer;
-  font-weight: bold;
 }
 
 .error {
   color: red;
   font-size: 13px;
 }
+
 .chat-list {
-  padding: 10px;
+  padding: 15px;
+}
+
+.empty {
+  text-align: center;
+  color: gray;
+  margin-top: 40px;
 }
 
 .fab {
@@ -65,5 +60,4 @@ input {
   height: 55px;
   border-radius: 50%;
   font-size: 28px;
-  cursor: pointer;
 }
