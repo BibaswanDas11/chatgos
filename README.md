@@ -52,6 +52,33 @@ git push -u origin <your-branch-name>
 
 Then refresh your GitHub repo page and switch to the same branch name you pushed.
 
+
+## Production readiness status
+
+Short answer: **not yet** for public production use.
+
+Current repo state is best described as an MVP/demo. Before launch, you should complete at least:
+
+1. **Firebase hardening**
+   - Replace placeholder values in `firebase-config.js` with real environment-specific config.
+   - Add strict Firestore Security Rules (least privilege) and test them with Firebase Emulator Suite.
+
+2. **Auth & account safety**
+   - Enforce stronger password requirements and account recovery flow.
+   - Add abuse controls (rate limits / anti-automation checks) around signup/login/add-friend paths.
+
+3. **Data model & scale**
+   - Avoid client-side full-collection scans for identity lookup; move to indexed queries or server logic.
+   - Add pagination/limits for chats/messages and index definitions for Firestore queries.
+
+4. **Reliability & observability**
+   - Add automated tests (unit + integration) and CI checks before deploy.
+   - Add error monitoring/logging and production analytics.
+
+5. **Deployment quality**
+   - Set separate dev/staging/prod projects and configuration.
+   - Validate responsive UX and accessibility across real devices/browsers.
+
 ## Firestore schema overview
 
 ### users/{userId}
