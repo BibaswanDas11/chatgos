@@ -2,17 +2,17 @@
 
 A responsive, WhatsApp-inspired web chat interface with a non-blue color palette.
 
-## Backend model (offline)
+## Backend model (self-hosted, no Firebase)
 
-This version uses **no online backend**. All data is stored in browser `localStorage` under:
+This version removes Firebase and uses a lightweight self-hosted Node backend:
 
-- `chatgos-db` (users, direct chats, groups, messages)
-- `chatgos-session` (logged-in user)
+- `server.mjs` serves the app + REST APIs + SSE realtime events.
+- `db.json` stores users/chats/groups/messages on the server filesystem.
+- Browser `localStorage` stores only `chatgos-session` (current signed-in user).
 
-That means:
-- Works fully offline in a single browser profile.
-- Data persists locally on that device/browser.
-- Opening the app in multiple tabs syncs via the browser `storage` event.
+This gives you:
+- Realtime messaging across different accounts/devices connected to the same Chatgos server.
+- Account persistence even if a user clears browser data (because account records live in `db.json`).
 
 ## Features implemented
 
@@ -28,39 +28,19 @@ That means:
 
 ## Setup
 
-1. No Firebase setup is required.
-2. Serve this folder using any static web server, for example:
+1. Start the Chatgos server:
 
 ```bash
-python3 -m http.server 8080
+node server.mjs
 ```
 
-Then open `http://localhost:8080`.
+2. Open in browser:
 
-## If the files are not showing up on GitHub
-
-If your local repo has these files but GitHub does not, it usually means the commit was never pushed.
-
-Run these commands in your local repository:
-
-```bash
-git status
-git remote -v
-git log --oneline -n 5
-git push origin <your-branch-name>
+```text
+http://localhost:8080
 ```
 
-If this is a brand new repository or branch, run:
+## Notes
 
-```bash
-git push -u origin <your-branch-name>
-```
-
-Then refresh your GitHub repo page and switch to the same branch name you pushed.
-
-
-## FAQ: realtime + profiles in this offline version
-
-- **Realtime messaging:** Yes, but only within the same browser profile (for example, multiple tabs on one machine). Cross-device internet realtime is not included in this offline build.
-- **Real accounts/profiles:** Yes, accounts are persisted locally. If a user signs up, logs out, and returns later on the same browser/profile (without clearing site storage), they can log in again with the same User ID/password.
-- **When data is lost:** Clearing browser storage/site data, private/incognito session reset, or switching to another device/browser profile.
+- To share across devices/accounts in realtime, all clients must open the same running server URL.
+- `db.json` is created/updated automatically and is your persistent account/message store.

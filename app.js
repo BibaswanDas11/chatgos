@@ -6,10 +6,10 @@ const state = {
   groups: [],
   selectedChat: null,
   selectedMessages: new Set(),
-  replyTo: null
+  replyTo: null,
+  stream: null
 };
 
-const DB_KEY = "chatgos-db";
 const SESSION_KEY = "chatgos-session";
 
 const $ = (id) => document.getElementById(id);
@@ -27,30 +27,15 @@ function safeAvatar(url, seed = "chatgos") {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
-const now = () => Date.now();
-const uid = (prefix) => `${prefix}_${Math.random().toString(36).slice(2, 10)}_${Date.now()}`;
-
-function defaultDb() {
-  return { users: {}, chats: {}, groups: {} };
-}
-
-function loadDb() {
-  try {
-    return JSON.parse(localStorage.getItem(DB_KEY)) || defaultDb();
-  } catch {
-    return defaultDb();
-  }
-}
-
-function saveDb(db) {
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
-}
-
-function transact(mutator) {
-  const db = loadDb();
-  mutator(db);
-  saveDb(db);
-  syncFromDb();
+async function api(path, method = "GET", body) {
+  const res = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(payload.error || "Request failed");
+  return payload;
 }
 
 function showScreen(screen) {
@@ -66,102 +51,13 @@ function setAuthMode(mode) {
   $("auth-error").textContent = "";
 }
 
-function findUserByUserId(userId) {
-  return loadDb().users[userId] || null;
-}
-
-function handleSignUp(userId, password) {
-  if (!/^[A-Za-z0-9]+$/.test(userId)) {
-    throw new Error("User ID must contain only letters and numbers");
-  }
-  if (findUserByUserId(userId)) {
-    throw new Error("User ID already exists");
-  }
-  transact((db) => {
-    db.users[userId] = {
-      userId,
-      username: userId,
-      password,
-      photoUrl: "",
-      status: "online",
-      friends: [],
-      blocked: [],
-      createdAt: now()
-    };
-  });
-  localStorage.setItem(SESSION_KEY, userId);
-}
-
-function handleLogin(userId, password) {
-  const user = findUserByUserId(userId);
-  if (!user || user.password !== password) throw new Error("Invalid User ID or password");
-  transact((db) => {
-    db.users[userId].status = "online";
-  });
-  localStorage.setItem(SESSION_KEY, userId);
-}
-
-function handleLogout() {
-  if (!state.me) return;
-  transact((db) => {
-    if (db.users[state.me.userId]) db.users[state.me.userId].status = "offline";
-  });
-  localStorage.removeItem(SESSION_KEY);
-  state.me = null;
-  state.selectedChat = null;
-  showScreen(accountPage);
-}
-
-function directChatId(a, b) {
-  return [a, b].sort().join("__");
-}
-
-function ensureDirectChat(db, a, b) {
-  const id = directChatId(a, b);
-  if (!db.chats[id]) {
-    db.chats[id] = {
-      id,
-      type: "direct",
-      members: [a, b],
-      lastMessage: "",
-      updatedAt: now(),
-      messages: []
-    };
-  }
-  return db.chats[id];
-}
-
-function syncFromDb() {
-  if (!state.me) return;
-  const db = loadDb();
-  const me = db.users[state.me.userId];
-  if (!me) {
-    handleLogout();
-    return;
-  }
-  state.me = me;
-
-  state.friends = (me.friends || [])
-    .map((friendId) => db.users[friendId])
-    .filter(Boolean);
-
-  state.chats = state.friends.map((friend) => {
-    const chat = ensureDirectChat(db, me.userId, friend.userId);
-    const last = chat.messages.at(-1)?.text || "";
-    return {
-      id: chat.id,
-      type: "direct",
-      name: friend.username,
-      photoUrl: friend.photoUrl || "",
-      peerUserId: friend.userId,
-      online: friend.status === "online",
-      lastMessage: last || "No messages yet",
-      updatedAt: chat.updatedAt || 0
-    };
-  });
-
-  state.groups = Object.values(db.groups || {}).filter((g) => g.members.includes(me.userId));
-
+async function syncFromServer() {
+  if (!state.me?.userId) return;
+  const data = await api(`/api/bootstrap?userId=${encodeURIComponent(state.me.userId)}`);
+  state.me = data.me;
+  state.friends = data.friends || [];
+  state.chats = data.chats || [];
+  state.groups = data.groups || [];
   renderFriends();
   renderChatList();
   renderGroups();
@@ -175,24 +71,55 @@ function syncFromDb() {
   }
 }
 
-function bootSession() {
-  const sessionUserId = localStorage.getItem(SESSION_KEY);
-  if (!sessionUserId) {
-    showScreen(accountPage);
-    return;
+function connectEvents() {
+  if (!state.me?.userId) return;
+  if (state.stream) state.stream.close();
+  state.stream = new EventSource(`/events?userId=${encodeURIComponent(state.me.userId)}`);
+  state.stream.onmessage = () => {
+    syncFromServer().catch(() => {});
+  };
+}
+
+async function handleSignUp(userId, password) {
+  await api("/api/signup", "POST", { userId, password });
+  localStorage.setItem(SESSION_KEY, userId);
+  state.me = { userId, username: userId };
+  connectEvents();
+  await syncFromServer();
+}
+
+async function handleLogin(userId, password) {
+  await api("/api/login", "POST", { userId, password });
+  localStorage.setItem(SESSION_KEY, userId);
+  state.me = { userId, username: userId };
+  connectEvents();
+  await syncFromServer();
+}
+
+async function handleLogout() {
+  if (state.me?.userId) {
+    await api("/api/logout", "POST", { userId: state.me.userId }).catch(() => {});
   }
-  const user = findUserByUserId(sessionUserId);
-  if (!user) {
+  if (state.stream) state.stream.close();
+  state.stream = null;
+  state.me = null;
+  state.selectedChat = null;
+  localStorage.removeItem(SESSION_KEY);
+  showScreen(accountPage);
+}
+
+async function bootSession() {
+  const sessionUserId = localStorage.getItem(SESSION_KEY);
+  if (!sessionUserId) return showScreen(accountPage);
+  state.me = { userId: sessionUserId, username: sessionUserId };
+  connectEvents();
+  try {
+    await syncFromServer();
+    showScreen(chatListPage);
+  } catch {
     localStorage.removeItem(SESSION_KEY);
     showScreen(accountPage);
-    return;
   }
-  state.me = user;
-  transact((db) => {
-    if (db.users[sessionUserId]) db.users[sessionUserId].status = "online";
-  });
-  showScreen(chatListPage);
-  syncFromDb();
 }
 
 function renderChatList() {
@@ -205,7 +132,7 @@ function renderChatList() {
     li.innerHTML = `
       <div>
         <strong>${chat.name}</strong>
-        <div class="muted">${chat.lastMessage}</div>
+        <div class="muted">${chat.lastMessage || "No messages yet"}</div>
       </div>
       <div class="status ${chat.online ? "online" : ""}">${chat.online ? "online" : "offline"}</div>
     `;
@@ -247,63 +174,52 @@ function renderGroups() {
       const rename = document.createElement("button");
       rename.className = "ghost-btn";
       rename.textContent = "Rename";
-      rename.onclick = () => {
+      rename.onclick = async () => {
         const name = prompt("New group name:", g.name);
         if (!name?.trim()) return;
-        transact((db) => {
-          db.groups[g.id].name = name.trim();
-        });
+        await api("/api/groups/rename", "POST", { userId: state.me.userId, groupId: g.id, name: name.trim() });
+        await syncFromServer();
       };
       right.appendChild(rename);
 
       const addMember = document.createElement("button");
       addMember.className = "ghost-btn";
       addMember.textContent = "Add Member";
-      addMember.onclick = () => {
+      addMember.onclick = async () => {
         const memberId = prompt("Enter member ID to add:");
-        if (!memberId) return;
-        transact((db) => {
-          const target = db.users[memberId.trim()];
-          if (!target) return;
-          const group = db.groups[g.id];
-          if (!group.members.includes(target.userId)) group.members.push(target.userId);
-        });
+        if (!memberId?.trim()) return;
+        try {
+          await api("/api/groups/add-member", "POST", { userId: state.me.userId, groupId: g.id, memberId: memberId.trim() });
+          await syncFromServer();
+        } catch (err) {
+          alert(err.message);
+        }
       };
       right.appendChild(addMember);
 
       const removeMember = document.createElement("button");
       removeMember.className = "ghost-btn";
       removeMember.textContent = "Remove Member";
-      removeMember.onclick = () => {
+      removeMember.onclick = async () => {
         const memberId = prompt("Enter member ID to remove:");
-        if (!memberId) return;
-        transact((db) => {
-          const group = db.groups[g.id];
-          group.members = group.members.filter((m) => m !== memberId.trim() && m !== group.adminId);
-        });
+        if (!memberId?.trim()) return;
+        await api("/api/groups/remove-member", "POST", { userId: state.me.userId, groupId: g.id, memberId: memberId.trim() });
+        await syncFromServer();
       };
       right.appendChild(removeMember);
     } else {
       const leave = document.createElement("button");
       leave.className = "ghost-btn";
       leave.textContent = "Leave";
-      leave.onclick = () => {
-        transact((db) => {
-          const group = db.groups[g.id];
-          group.members = group.members.filter((m) => m !== state.me.userId);
-        });
+      leave.onclick = async () => {
+        await api("/api/groups/leave", "POST", { userId: state.me.userId, groupId: g.id });
+        await syncFromServer();
       };
       right.appendChild(leave);
     }
 
     ul.appendChild(li);
   });
-}
-
-function getChatMessages(chat) {
-  const db = loadDb();
-  if (chat.type === "group") return db.groups[chat.id]?.messages || [];
-  return db.chats[chat.id]?.messages || [];
 }
 
 function openChat(chat, keepSelection = false) {
@@ -324,7 +240,7 @@ function openChat(chat, keepSelection = false) {
     $("profile-popup").classList.remove("hidden");
   };
 
-  const messages = getChatMessages(chat).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  const messages = (chat.messages || []).sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
   const list = $("message-list");
   list.innerHTML = "";
   messages.forEach((m) => {
@@ -346,87 +262,61 @@ function toggleMessageSelection(id, text) {
   if (state.selectedChat) openChat(state.selectedChat, true);
 }
 
-function sendMessage(text) {
+async function sendMessage(text) {
   const chat = state.selectedChat;
   if (!chat) return;
-  transact((db) => {
-    const payload = {
-      id: uid("msg"),
-      senderId: state.me.userId,
-      text,
-      createdAt: now(),
-      replyTo: state.replyTo?.id || null,
-      replyToPreview: state.replyTo?.text || null
-    };
-
-    if (chat.type === "group") {
-      const group = db.groups[chat.id];
-      group.messages ||= [];
-      group.messages.push(payload);
-      group.updatedAt = now();
-      group.lastMessage = text;
-    } else {
-      const direct = ensureDirectChat(db, state.me.userId, chat.peerUserId);
-      direct.messages.push(payload);
-      direct.updatedAt = now();
-      direct.lastMessage = text;
-    }
+  await api("/api/messages/send", "POST", {
+    chatType: chat.type === "group" ? "group" : "direct",
+    chatId: chat.id,
+    from: state.me.userId,
+    to: chat.peerUserId,
+    text,
+    replyTo: state.replyTo?.id || null,
+    replyToPreview: state.replyTo?.text || null
   });
   state.replyTo = null;
+  await syncFromServer();
 }
 
-function deleteSelected() {
-  const ids = new Set(state.selectedMessages);
-  transact((db) => {
-    const chat = state.selectedChat;
-    if (!chat) return;
-    if (chat.type === "group") {
-      const group = db.groups[chat.id];
-      group.messages = (group.messages || []).filter((m) => !ids.has(m.id));
-    } else {
-      const direct = db.chats[chat.id];
-      if (direct) direct.messages = (direct.messages || []).filter((m) => !ids.has(m.id));
-    }
+async function deleteSelected() {
+  const ids = [...state.selectedMessages];
+  if (!ids.length || !state.selectedChat) return;
+  await api("/api/messages/delete", "POST", {
+    chatType: state.selectedChat.type === "group" ? "group" : "direct",
+    chatId: state.selectedChat.id,
+    ids
   });
   state.selectedMessages.clear();
+  await syncFromServer();
 }
 
-function clearChat() {
-  transact((db) => {
-    const chat = state.selectedChat;
-    if (!chat) return;
-    if (chat.type === "group") db.groups[chat.id].messages = [];
-    else if (db.chats[chat.id]) db.chats[chat.id].messages = [];
+async function clearChat() {
+  if (!state.selectedChat) return;
+  await api("/api/chats/clear", "POST", {
+    chatType: state.selectedChat.type === "group" ? "group" : "direct",
+    chatId: state.selectedChat.id
   });
+  await syncFromServer();
 }
 
-function unfriend(friendId) {
-  transact((db) => {
-    const me = db.users[state.me.userId];
-    const friend = db.users[friendId];
-    me.friends = (me.friends || []).filter((id) => id !== friendId);
-    if (friend) friend.friends = (friend.friends || []).filter((id) => id !== me.userId);
-  });
+async function unfriend(friendId) {
+  await api("/api/friends/remove", "POST", { me: state.me.userId, friendId });
+  await syncFromServer();
 }
 
-function blockUser(friendId) {
-  transact((db) => {
-    const me = db.users[state.me.userId];
-    me.blocked ||= [];
-    if (!me.blocked.includes(friendId)) me.blocked.push(friendId);
-  });
+async function blockUser(friendId) {
+  await api("/api/block", "POST", { me: state.me.userId, targetId: friendId });
 }
 
-$("auth-form").onsubmit = (e) => {
+$("auth-form").onsubmit = async (e) => {
   e.preventDefault();
   const userId = $("user-id").value.trim();
   const password = $("password").value;
+
   try {
-    if (state.mode === "signup") handleSignUp(userId, password);
-    else handleLogin(userId, password);
-    state.me = findUserByUserId(userId);
+    if (state.mode === "signup") await handleSignUp(userId, password);
+    else await handleLogin(userId, password);
     showScreen(chatListPage);
-    syncFromDb();
   } catch (err) {
     $("auth-error").textContent = err.message;
   }
@@ -434,7 +324,7 @@ $("auth-form").onsubmit = (e) => {
 
 $("tab-login").onclick = () => setAuthMode("login");
 $("tab-signup").onclick = () => setAuthMode("signup");
-$("logout-btn").onclick = handleLogout;
+$("logout-btn").onclick = () => handleLogout();
 $("menu-toggle").onclick = () => $("menu-popup").classList.toggle("hidden");
 $("friends-fab").onclick = () => $("friends-panel").classList.remove("hidden");
 $("add-friend-fab").onclick = () => $("add-friend-panel").classList.remove("hidden");
@@ -444,43 +334,41 @@ Array.from(document.querySelectorAll("[data-close]")).forEach((btn) => {
   btn.onclick = () => $(btn.dataset.close).classList.add("hidden");
 });
 
-$("add-friend-form").onsubmit = (e) => {
+$("add-friend-form").onsubmit = async (e) => {
   e.preventDefault();
   const id = $("friend-id-input").value.trim();
-  const user = findUserByUserId(id);
   const out = $("friend-search-result");
 
-  if (!user || id === state.me.userId) {
-    out.innerHTML = `<p class="error-message">User not found</p>`;
-    return;
+  try {
+    const result = await api(`/api/search-user?userId=${encodeURIComponent(id)}`);
+    const user = result.user;
+    if (!user || id === state.me.userId) {
+      out.innerHTML = `<p class="error-message">User not found</p>`;
+      return;
+    }
+
+    out.innerHTML = `
+      <div class="chat-item">
+        <span>${user.username}</span>
+        <button id="add-this-user" class="primary-btn">Send Friend Request / Add</button>
+      </div>
+    `;
+
+    $("add-this-user").onclick = async () => {
+      await api("/api/friends/add", "POST", { me: state.me.userId, friendId: user.userId });
+      out.innerHTML = `<p class="muted">Added successfully.</p>`;
+      await syncFromServer();
+    };
+  } catch (err) {
+    out.innerHTML = `<p class="error-message">${err.message}</p>`;
   }
-
-  out.innerHTML = `
-    <div class="chat-item">
-      <span>${user.username}</span>
-      <button id="add-this-user" class="primary-btn">Send Friend Request / Add</button>
-    </div>
-  `;
-
-  $("add-this-user").onclick = () => {
-    transact((db) => {
-      const me = db.users[state.me.userId];
-      const friend = db.users[user.userId];
-      me.friends ||= [];
-      friend.friends ||= [];
-      if (!me.friends.includes(friend.userId)) me.friends.push(friend.userId);
-      if (!friend.friends.includes(me.userId)) friend.friends.push(me.userId);
-      ensureDirectChat(db, me.userId, friend.userId);
-    });
-    out.innerHTML = `<p class="muted">Added successfully.</p>`;
-  };
 };
 
-$("message-form").onsubmit = (e) => {
+$("message-form").onsubmit = async (e) => {
   e.preventDefault();
   const text = $("message-input").value.trim();
   if (!text || !state.selectedChat) return;
-  sendMessage(text);
+  await sendMessage(text);
   $("message-input").value = "";
 };
 
@@ -489,50 +377,33 @@ $("reply-btn").onclick = () => {
   else alert(`Reply target selected: ${state.replyTo.text.slice(0, 20)}`);
 };
 
-$("delete-btn").onclick = deleteSelected;
-$("clear-chat-btn").onclick = clearChat;
+$("delete-btn").onclick = () => deleteSelected();
+$("clear-chat-btn").onclick = () => clearChat();
 
-$("block-btn").onclick = () => {
+$("block-btn").onclick = async () => {
   if (state.selectedChat?.peerUserId) {
-    blockUser(state.selectedChat.peerUserId);
+    await blockUser(state.selectedChat.peerUserId);
     alert("User blocked.");
   }
 };
 
-$("unfriend-btn").onclick = () => {
+$("unfriend-btn").onclick = async () => {
   if (state.selectedChat?.peerUserId) {
-    unfriend(state.selectedChat.peerUserId);
+    await unfriend(state.selectedChat.peerUserId);
     $("profile-popup").classList.add("hidden");
   }
 };
 
-$("create-group-form").onsubmit = (e) => {
+$("create-group-form").onsubmit = async (e) => {
   e.preventDefault();
   const name = $("group-name").value.trim();
   const photoUrl = $("group-photo").value.trim();
   if (!name) return;
-  transact((db) => {
-    const id = uid("grp");
-    db.groups[id] = {
-      id,
-      type: "group",
-      name,
-      photoUrl,
-      members: [state.me.userId],
-      adminId: state.me.userId,
-      createdAt: now(),
-      updatedAt: now(),
-      lastMessage: "",
-      messages: []
-    };
-  });
+  await api("/api/groups/create", "POST", { userId: state.me.userId, name, photoUrl });
   $("group-name").value = "";
   $("group-photo").value = "";
+  await syncFromServer();
 };
-
-window.addEventListener("storage", (e) => {
-  if (e.key === DB_KEY || e.key === SESSION_KEY) syncFromDb();
-});
 
 setAuthMode("login");
 bootSession();
