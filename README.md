@@ -57,3 +57,10 @@ git push -u origin <your-branch-name>
 ```
 
 Then refresh your GitHub repo page and switch to the same branch name you pushed.
+
+
+## FAQ: realtime + profiles in this offline version
+
+- **Realtime messaging:** Yes, but only within the same browser profile (for example, multiple tabs on one machine). Cross-device internet realtime is not included in this offline build.
+- **Real accounts/profiles:** Yes, accounts are persisted locally. If a user signs up, logs out, and returns later on the same browser/profile (without clearing site storage), they can log in again with the same User ID/password.
+- **When data is lost:** Clearing browser storage/site data, private/incognito session reset, or switching to another device/browser profile.
