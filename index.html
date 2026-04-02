@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chatgos</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <section id="account-page" class="screen active">
+        <div class="card account-card">
+          <h1>Chatgos</h1>
+          <p class="subtitle">Connect instantly with friends and groups.</p>
+
+          <div class="tabs">
+            <button id="tab-login" class="tab active">Login</button>
+            <button id="tab-signup" class="tab">Create Account</button>
+          </div>
+
+          <form id="auth-form">
+            <label for="user-id">User ID</label>
+            <input id="user-id" type="text" placeholder="letters and numbers only" required />
+
+            <label for="password">Password</label>
+            <input id="password" type="password" placeholder="Enter password" required />
+
+            <p id="auth-error" class="error-message"></p>
+            <button id="auth-submit" type="submit" class="primary-btn">Login</button>
+          </form>
+        </div>
+      </section>
+
+      <section id="chat-list-page" class="screen">
+        <header class="topbar">
+          <button id="menu-toggle" class="ghost-btn">☰ Chatgos</button>
+          <div id="menu-popup" class="menu-popup hidden">
+            <button id="open-settings">Settings</button>
+            <button id="logout-btn">Logout</button>
+          </div>
+        </header>
+
+        <div class="content-wrap">
+          <ul id="chat-list" class="chat-list"></ul>
+        </div>
+
+        <button id="friends-fab" class="fab fab-primary" title="Friends">👥</button>
+        <button id="add-friend-fab" class="fab fab-secondary" title="Add friend">＋</button>
+      </section>
+
+      <section id="friends-panel" class="modal hidden">
+        <div class="modal-card">
+          <h2>Friends</h2>
+          <p id="empty-friends" class="muted">No friends till now. Try adding some.</p>
+          <ul id="friends-list"></ul>
+          <button class="primary-btn" data-close="friends-panel">Close</button>
+        </div>
+      </section>
+
+      <section id="add-friend-panel" class="modal hidden">
+        <div class="modal-card">
+          <h2>Add Friends</h2>
+          <form id="add-friend-form">
+            <input id="friend-id-input" type="text" placeholder="Enter user ID" required />
+            <button type="submit" class="primary-btn">Search</button>
+          </form>
+          <div id="friend-search-result"></div>
+          <button class="ghost-btn" data-close="add-friend-panel">Cancel</button>
+        </div>
+      </section>
+
+      <section id="chat-window-page" class="screen">
+        <header id="chat-header" class="chat-header"></header>
+        <div id="message-list" class="message-list"></div>
+        <form id="message-form" class="message-form">
+          <input id="message-input" type="text" placeholder="Type a message" required />
+          <button id="reply-btn" type="button" class="ghost-btn">Reply</button>
+          <button id="delete-btn" type="button" class="ghost-btn">Delete</button>
+          <button type="submit" class="primary-btn">Send</button>
+        </form>
+      </section>
+
+      <section id="profile-popup" class="modal hidden">
+        <div class="modal-card">
+          <img id="profile-avatar" class="avatar-lg" alt="avatar" />
+          <h3 id="profile-name"></h3>
+          <p id="profile-user-id" class="muted"></p>
+          <div class="button-group">
+            <button id="block-btn" class="danger-btn">Block</button>
+            <button id="clear-chat-btn" class="ghost-btn">Clear Chat</button>
+            <button id="unfriend-btn" class="ghost-btn">Unfriend</button>
+          </div>
+          <button class="primary-btn" data-close="profile-popup">Done</button>
+        </div>
+      </section>
+
+      <section id="groups-panel" class="modal hidden">
+        <div class="modal-card wide">
+          <h2>Group Chats</h2>
+          <form id="create-group-form" class="inline-form">
+            <input id="group-name" placeholder="Group name" required />
+            <input id="group-photo" placeholder="Group photo URL" />
+            <button class="primary-btn" type="submit">Create</button>
+          </form>
+          <ul id="group-list"></ul>
+          <button class="ghost-btn" data-close="groups-panel">Close</button>
+        </div>
+      </section>
+    </div>
+
+    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
